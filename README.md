@@ -2,6 +2,8 @@
 
 # Q-Anon Posts/Drops MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@jkingsman/qanon-mcp-server)](https://smithery.ai/server/@jkingsman/qanon-mcp-server)
+
 An MCP (Model Context Protocol) server that provides access to a dataset of Q-Anon posts for anthropological/sociological research. This server allows AI assistants like Claude to search, filter, and analyze the Q-Anon drops.
 
 Posts are drawn from https://github.com/jkingsman/JSON-QAnon. You can learn more about how the source data was composed there, as well as find alternate formats, schemas, etc.
@@ -17,6 +19,14 @@ Posts are drawn from https://github.com/jkingsman/JSON-QAnon. You can learn more
 ## Installation
 
 This tool is compatible with `uvx` and doesn't need to be cloned/installed.
+
+### Installing via Smithery
+
+To install qanon-mcp-server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@jkingsman/qanon-mcp-server):
+
+```bash
+npx -y @smithery/cli install @jkingsman/qanon-mcp-server --client claude
+```
 
 ### Manual
 
