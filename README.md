@@ -2,6 +2,7 @@
 
 # Q-Anon Posts/Drops MCP Server
 
+![](https://badge.mcpx.dev?type=server 'qanon-mcp')
 [![smithery badge](https://smithery.ai/badge/@jkingsman/qanon-mcp-server)](https://smithery.ai/server/@jkingsman/qanon-mcp-server)
 
 An MCP (Model Context Protocol) server that provides access to a dataset of Q-Anon posts for anthropological/sociological research. This server allows AI assistants like Claude to search, filter, and analyze the Q-Anon drops.
