@@ -6,6 +6,8 @@ An MCP (Model Context Protocol) server that provides access to a dataset of Q-An
 
 Posts are drawn from https://github.com/jkingsman/JSON-QAnon.
 
+### Warning: This tool was entirely vibe coded. Use at your own risk.
+
 ## Prerequisites
 
 - Python 3.10 or higher

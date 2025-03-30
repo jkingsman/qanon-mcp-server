@@ -4,6 +4,8 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
+import signal
+import sys
 
 from mcp.server.fastmcp import FastMCP
 
@@ -13,6 +15,7 @@ mcp = FastMCP("QAnon Posts Explorer")
 # Path to the dataset
 DATASET_FILENAME = "posts.json"
 
+
 # Load the dataset
 def load_dataset():
     # Get the directory containing the script
@@ -21,9 +24,9 @@ def load_dataset():
     dataset_path = os.path.join(script_dir, DATASET_FILENAME)
 
     try:
-        with open(dataset_path, 'r', encoding='utf-8') as f:
+        with open(dataset_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return data.get('posts', [])
+            return data.get("posts", [])
     except FileNotFoundError:
         print(f"Error: Dataset file '{dataset_path}' not found.")
         return []
@@ -31,73 +34,85 @@ def load_dataset():
         print(f"Error: Failed to parse JSON from '{dataset_path}'.")
         return []
 
+
 # Cache the dataset
 posts = load_dataset()
+
 
 # Helper functions
 def get_post_by_id(post_id: int) -> Optional[Dict]:
     """Get a post by its ID."""
     for post in posts:
-        if post.get('post_metadata', {}).get('id') == post_id:
+        if post.get("post_metadata", {}).get("id") == post_id:
             return post
     return None
+
 
 def search_posts_by_keyword(keyword: str) -> List[Dict]:
     """Search posts containing a keyword."""
     keyword = keyword.lower()
     results = []
     for post in posts:
-        text = post.get('text', '').lower()
+        text = post.get("text", "").lower()
         if keyword in text:
             results.append(post)
     return results
 
+
 def get_posts_by_date_range(start_date: str, end_date: str) -> List[Dict]:
     """Get posts within a date range (YYYY-MM-DD format)."""
     try:
-        start_timestamp = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_timestamp = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp()) + 86400  # Add a day in seconds
+        start_timestamp = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_timestamp = (
+            int(datetime.strptime(end_date, "%Y-%m-%d").timestamp()) + 86400
+        )  # Add a day in seconds
 
         results = []
         for post in posts:
-            post_time = post.get('post_metadata', {}).get('time', 0)
+            post_time = post.get("post_metadata", {}).get("time", 0)
             if start_timestamp <= post_time <= end_timestamp:
                 results.append(post)
         return results
     except ValueError:
         return []
 
+
 def get_posts_by_author(author: str) -> List[Dict]:
     """Get posts by a specific author."""
     results = []
     for post in posts:
-        post_author = post.get('post_metadata', {}).get('author', '')
+        post_author = post.get("post_metadata", {}).get("author", "")
         if post_author.lower() == author.lower():
             results.append(post)
     return results
 
+
 def format_post(post: Dict) -> str:
     """Format a post for display."""
-    metadata = post.get('post_metadata', {})
-    post_id = metadata.get('id', 'Unknown')
-    author = metadata.get('author', 'Unknown')
-    author_id = metadata.get('author_id', 'Unknown')
+    metadata = post.get("post_metadata", {})
+    post_id = metadata.get("id", "Unknown")
+    author = metadata.get("author", "Unknown")
+    author_id = metadata.get("author_id", "Unknown")
 
-    source = metadata.get('source', {})
-    board = source.get('board', 'Unknown')
-    site = source.get('site', 'Unknown')
+    source = metadata.get("source", {})
+    board = source.get("board", "Unknown")
+    site = source.get("site", "Unknown")
 
-    timestamp = metadata.get('time', 0)
-    date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S') if timestamp else 'Unknown'
+    timestamp = metadata.get("time", 0)
+    date_str = (
+        datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        if timestamp
+        else "Unknown"
+    )
 
-    text = post.get('text', '')
+    text = post.get("text", "")
     if text:
         # Replace '\n' string literals with actual newlines
-        text = text.replace('\\n', '\n')
+        text = text.replace("\\n", "\n")
 
     # Format images
     images_section = ""
-    images = post.get('images', [])
+    images = post.get("images", [])
     if images:
         images_section = "\nImages:\n"
         for img in images:
@@ -105,14 +120,14 @@ def format_post(post: Dict) -> str:
 
     # Format referenced posts
     refs_section = ""
-    refs = post.get('referenced_posts', [])
+    refs = post.get("referenced_posts", [])
     if refs:
         refs_section = "\nReferenced Posts:\n"
         for ref in refs:
-            ref_text = ref.get('text', 'No text')
+            ref_text = ref.get("text", "No text")
             if ref_text:
-                ref_text = ref_text.replace('\\n', '\n')
-            ref_author_id = ref.get('author_id', 'Unknown')
+                ref_text = ref_text.replace("\\n", "\n")
+            ref_author_id = ref.get("author_id", "Unknown")
             refs_section += f"- Reference: {ref.get('reference', 'Unknown')}\n"
             refs_section += f"  Author ID: {ref_author_id}\n"
             refs_section += f"  Text: {ref_text}\n"
@@ -130,12 +145,15 @@ Text:
 """
     return formatted.strip()
 
+
 # Resources
+
 
 @mcp.resource("qanon://posts/count")
 def get_posts_count() -> str:
     """Get the total number of posts in the dataset."""
     return str(len(posts))
+
 
 @mcp.resource("qanon://posts/{post_id}")
 def get_post_resource(post_id: int) -> str:
@@ -145,15 +163,17 @@ def get_post_resource(post_id: int) -> str:
         return format_post(post)
     return "Post not found."
 
+
 @mcp.resource("qanon://authors")
 def get_authors() -> str:
     """Get a list of unique authors in the dataset."""
     authors = set()
     for post in posts:
-        author = post.get('post_metadata', {}).get('author', '')
+        author = post.get("post_metadata", {}).get("author", "")
         if author:
             authors.add(author)
     return "\n".join(sorted(authors))
+
 
 @mcp.resource("qanon://stats")
 def get_stats() -> str:
@@ -172,39 +192,47 @@ def get_stats() -> str:
     # Count posts with references
     ref_count = 0
     # Find earliest and latest dates
-    earliest_time = float('inf')
+    earliest_time = float("inf")
     latest_time = 0
 
     for post in posts:
         # Author counts
-        author = post.get('post_metadata', {}).get('author', 'Unknown')
+        author = post.get("post_metadata", {}).get("author", "Unknown")
         author_counts[author] = author_counts.get(author, 0) + 1
 
         # Site counts
-        site = post.get('post_metadata', {}).get('source', {}).get('site', 'Unknown')
+        site = post.get("post_metadata", {}).get("source", {}).get("site", "Unknown")
         site_counts[site] = site_counts.get(site, 0) + 1
 
         # Board counts
-        board = post.get('post_metadata', {}).get('source', {}).get('board', 'Unknown')
+        board = post.get("post_metadata", {}).get("source", {}).get("board", "Unknown")
         board_counts[board] = board_counts.get(board, 0) + 1
 
         # Image count
-        if post.get('images'):
+        if post.get("images"):
             image_count += 1
 
         # Reference count
-        if post.get('referenced_posts'):
+        if post.get("referenced_posts"):
             ref_count += 1
 
         # Time range
-        time_val = post.get('post_metadata', {}).get('time', 0)
+        time_val = post.get("post_metadata", {}).get("time", 0)
         if time_val:
             earliest_time = min(earliest_time, time_val)
             latest_time = max(latest_time, time_val)
 
     # Format dates
-    earliest_date = datetime.fromtimestamp(earliest_time).strftime('%Y-%m-%d') if earliest_time != float('inf') else 'Unknown'
-    latest_date = datetime.fromtimestamp(latest_time).strftime('%Y-%m-%d') if latest_time else 'Unknown'
+    earliest_date = (
+        datetime.fromtimestamp(earliest_time).strftime("%Y-%m-%d")
+        if earliest_time != float("inf")
+        else "Unknown"
+    )
+    latest_date = (
+        datetime.fromtimestamp(latest_time).strftime("%Y-%m-%d")
+        if latest_time
+        else "Unknown"
+    )
 
     # Format output
     result = f"""
@@ -218,7 +246,9 @@ Posts/Drops with Referenced Posts: {ref_count}
 Top Authors:
 """
 
-    for author, count in sorted(author_counts.items(), key=lambda x: x[1], reverse=True):
+    for author, count in sorted(
+        author_counts.items(), key=lambda x: x[1], reverse=True
+    ):
         result += f"- {author}: {count} posts\n"
 
     result += "\nPosts by Site:\n"
@@ -231,7 +261,9 @@ Top Authors:
 
     return result.strip()
 
+
 # Tools
+
 
 @mcp.tool()
 def search_posts(query: str, limit: int = 10) -> str:
@@ -263,6 +295,7 @@ def search_posts(query: str, limit: int = 10) -> str:
 
     return output
 
+
 @mcp.tool()
 def get_posts_by_date(start_date: str, end_date: str = None, limit: int = 10) -> str:
     """
@@ -278,8 +311,8 @@ def get_posts_by_date(start_date: str, end_date: str = None, limit: int = 10) ->
 
     try:
         # Validate date format
-        datetime.strptime(start_date, '%Y-%m-%d')
-        datetime.strptime(end_date, '%Y-%m-%d')
+        datetime.strptime(start_date, "%Y-%m-%d")
+        datetime.strptime(end_date, "%Y-%m-%d")
     except ValueError:
         return "Invalid date format. Please use YYYY-MM-DD format."
 
@@ -301,6 +334,7 @@ def get_posts_by_date(start_date: str, end_date: str = None, limit: int = 10) ->
 
     return output
 
+
 @mcp.tool()
 def get_posts_by_author_id(author_id: str, limit: int = 10) -> str:
     """
@@ -315,7 +349,7 @@ def get_posts_by_author_id(author_id: str, limit: int = 10) -> str:
 
     results = []
     for post in posts:
-        post_author_id = post.get('post_metadata', {}).get('author_id', '')
+        post_author_id = post.get("post_metadata", {}).get("author_id", "")
         if post_author_id == author_id:
             results.append(post)
 
@@ -335,6 +369,7 @@ def get_posts_by_author_id(author_id: str, limit: int = 10) -> str:
 
     return output
 
+
 @mcp.tool()
 def analyze_post(post_id: int) -> str:
     """
@@ -347,23 +382,27 @@ def analyze_post(post_id: int) -> str:
     if not post:
         return f"Post with ID {post_id} not found."
 
-    metadata = post.get('post_metadata', {})
-    author = metadata.get('author', 'Unknown')
-    author_id = metadata.get('author_id', 'Unknown')
-    timestamp = metadata.get('time', 0)
-    date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S') if timestamp else 'Unknown'
+    metadata = post.get("post_metadata", {})
+    author = metadata.get("author", "Unknown")
+    author_id = metadata.get("author_id", "Unknown")
+    timestamp = metadata.get("time", 0)
+    date_str = (
+        datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        if timestamp
+        else "Unknown"
+    )
 
-    source = metadata.get('source', {})
-    board = source.get('board', 'Unknown')
-    site = source.get('site', 'Unknown')
-    link = source.get('link', 'Unknown')
+    source = metadata.get("source", {})
+    board = source.get("board", "Unknown")
+    site = source.get("site", "Unknown")
+    link = source.get("link", "Unknown")
 
-    text = post.get('text', '')
+    text = post.get("text", "")
     if text:
-        text = text.replace('\\n', '\n')
+        text = text.replace("\\n", "\n")
 
     # Images analysis
-    images = post.get('images', [])
+    images = post.get("images", [])
     images_analysis = ""
     if images:
         images_analysis = f"\n\nImages ({len(images)}):\n"
@@ -371,15 +410,15 @@ def analyze_post(post_id: int) -> str:
             images_analysis += f"{i}. File: {img.get('file', 'Unknown')}, Name: {img.get('name', 'Unknown')}\n"
 
     # Referenced posts analysis
-    refs = post.get('referenced_posts', [])
+    refs = post.get("referenced_posts", [])
     refs_analysis = ""
     if refs:
         refs_analysis = f"\n\nReferenced Posts ({len(refs)}):\n"
         for i, ref in enumerate(refs, 1):
-            ref_text = ref.get('text', 'No text')
+            ref_text = ref.get("text", "No text")
             if ref_text:
-                ref_text = ref_text.replace('\\n', '\n')
-            ref_author_id = ref.get('author_id', 'Unknown')
+                ref_text = ref_text.replace("\\n", "\n")
+            ref_author_id = ref.get("author_id", "Unknown")
             refs_analysis += f"{i}. Reference: {ref.get('reference', 'Unknown')}\n"
             refs_analysis += f"   Author ID: {ref_author_id}\n"
             refs_analysis += f"   Text: {ref_text}\n\n"
@@ -411,8 +450,10 @@ This post is part of {len(posts)} total posts in the dataset.
 
     # Add information about posts around this one
     post_position = None
-    for i, p in enumerate(sorted(posts, key=lambda x: x.get('post_metadata', {}).get('id', 0))):
-        if p.get('post_metadata', {}).get('id') == post_id:
+    for i, p in enumerate(
+        sorted(posts, key=lambda x: x.get("post_metadata", {}).get("id", 0))
+    ):
+        if p.get("post_metadata", {}).get("id") == post_id:
             post_position = i
             break
 
@@ -422,18 +463,23 @@ This post is part of {len(posts)} total posts in the dataset.
         # Previous post
         if post_position > 0:
             prev_post = posts[post_position - 1]
-            prev_id = prev_post.get('post_metadata', {}).get('id', 'Unknown')
-            prev_date = datetime.fromtimestamp(prev_post.get('post_metadata', {}).get('time', 0)).strftime('%Y-%m-%d')
+            prev_id = prev_post.get("post_metadata", {}).get("id", "Unknown")
+            prev_date = datetime.fromtimestamp(
+                prev_post.get("post_metadata", {}).get("time", 0)
+            ).strftime("%Y-%m-%d")
             analysis += f"\nPrevious post: #{prev_id} from {prev_date}\n"
 
         # Next post
         if post_position < len(posts) - 1:
             next_post = posts[post_position + 1]
-            next_id = next_post.get('post_metadata', {}).get('id', 'Unknown')
-            next_date = datetime.fromtimestamp(next_post.get('post_metadata', {}).get('time', 0)).strftime('%Y-%m-%d')
+            next_id = next_post.get("post_metadata", {}).get("id", "Unknown")
+            next_date = datetime.fromtimestamp(
+                next_post.get("post_metadata", {}).get("time", 0)
+            ).strftime("%Y-%m-%d")
             analysis += f"Next post: #{next_id} from {next_date}\n"
 
     return analysis
+
 
 @mcp.tool()
 def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
@@ -450,14 +496,16 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
     # Filter by date range if provided
     if start_date and end_date:
         try:
-            datetime.strptime(start_date, '%Y-%m-%d')
-            datetime.strptime(end_date, '%Y-%m-%d')
+            datetime.strptime(start_date, "%Y-%m-%d")
+            datetime.strptime(end_date, "%Y-%m-%d")
             timeline_posts = get_posts_by_date_range(start_date, end_date)
         except ValueError:
             return "Invalid date format. Please use YYYY-MM-DD format."
 
     # Sort posts by time
-    timeline_posts = sorted(timeline_posts, key=lambda x: x.get('post_metadata', {}).get('time', 0))
+    timeline_posts = sorted(
+        timeline_posts, key=lambda x: x.get("post_metadata", {}).get("time", 0)
+    )
 
     if not timeline_posts:
         return "No posts found for the specified date range."
@@ -465,9 +513,9 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
     # Group posts by month
     months = {}
     for post in timeline_posts:
-        timestamp = post.get('post_metadata', {}).get('time', 0)
+        timestamp = post.get("post_metadata", {}).get("time", 0)
         if timestamp:
-            month_key = datetime.fromtimestamp(timestamp).strftime('%Y-%m')
+            month_key = datetime.fromtimestamp(timestamp).strftime("%Y-%m")
             if month_key not in months:
                 months[month_key] = []
             months[month_key].append(post)
@@ -476,7 +524,7 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
     timeline = "QAnon Posts Timeline:\n\n"
 
     for month_key in sorted(months.keys()):
-        month_name = datetime.strptime(month_key, '%Y-%m').strftime('%B %Y')
+        month_name = datetime.strptime(month_key, "%Y-%m").strftime("%B %Y")
         month_posts = months[month_key]
 
         timeline += f"## {month_name} ({len(month_posts)} posts)\n\n"
@@ -489,16 +537,16 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
             sample_posts = month_posts[:2] + month_posts[-2:]
 
         for post in sample_posts:
-            post_id = post.get('post_metadata', {}).get('id', 'Unknown')
-            timestamp = post.get('post_metadata', {}).get('time', 0)
-            day = datetime.fromtimestamp(timestamp).strftime('%d %b')
+            post_id = post.get("post_metadata", {}).get("id", "Unknown")
+            timestamp = post.get("post_metadata", {}).get("time", 0)
+            day = datetime.fromtimestamp(timestamp).strftime("%d %b")
 
-            text = post.get('text', '')
+            text = post.get("text", "")
             if text:
-                text = text.replace('\\n', ' ')
+                text = text.replace("\\n", " ")
                 # Truncate text if too long
                 if len(text) > 100:
-                    text = text[:97] + '...'
+                    text = text[:97] + "..."
 
             timeline += f"- {day}: Post #{post_id} - {text}\n"
 
@@ -509,12 +557,34 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
 
     return timeline
 
-# Run the server
-if __name__ == "__main__":
+
+
+def handle_exit(signum, frame):
+    """Handle exit signals gracefully"""
+    print("\nReceived termination signal. Shutting down gracefully...")
+    sys.exit(0)
+
+
+def main():
     if not posts:
         print("Warning: No posts loaded from the dataset.")
     else:
         print(f"Loaded {len(posts)} posts from the dataset.")
 
-    # Run the MCP server
-    mcp.run()
+    print("Q-Anon Posts MCP Server starting... (Press Ctrl+C to exit)")
+
+    try:
+        # Run the MCP server
+        mcp.run()
+    except KeyboardInterrupt:
+        # Handle Ctrl+C gracefully - FastMCP will handle cleanup
+        print("\nKeyboard interrupt received. Shutting down...")
+    except Exception as e:
+        print(f"\nError: {str(e)}")
+    finally:
+        print("Q-Anon Posts MCP Server stopped.")
+
+
+# Run the server
+if __name__ == "__main__":
+    main()
