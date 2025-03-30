@@ -1,10 +1,10 @@
-# QAnon is a dangerous cult. This archive is for research purposes only, and I do _not_ endorse any material in this repo.
+## QAnon is a dangerous cult. This archive is for research purposes only, and I do _not_ endorse any material in this repo.
 
 # Q-Anon Posts/Drops MCP Server
 
 An MCP (Model Context Protocol) server that provides access to a dataset of Q-Anon posts for anthropological/sociological research. This server allows AI assistants like Claude to search, filter, and analyze the Q-Anon drops.
 
-Posts are drawn from https://github.com/jkingsman/JSON-QAnon.
+Posts are drawn from https://github.com/jkingsman/JSON-QAnon. You can learn more about how the source data was composed there, as well as find alternate formats, schemas, etc.
 
 ### Warning: This tool was entirely vibe coded. Use at your own risk.
 
@@ -16,19 +16,23 @@ Posts are drawn from https://github.com/jkingsman/JSON-QAnon.
 
 ## Installation
 
+This tool is compatible with `uvx` and doesn't need to be cloned/installed.
+
+### Manual
+
 1. Clone or download this repository to your local machine
 2. Install the required packages using `uv`:
 
 ```bash
-uv pip install "mcp[cli]"
+uv pip install -e .
 ```
 
 ## Usage
 
-You can run the server directly with `uv`:
+You can run the server directly with `uvx`:
 
 ```bash
-uv run qanon_mcp_server.py
+uvx qanon_mcp
 ```
 
 ## Claude Desktop Integration
@@ -43,34 +47,33 @@ To use this MCP server with Claude Desktop:
 ```json
 {
   "mcpServers": {
-    "qanon-explorer": {
-      "command": "uv",
+    "qanon_mcp": {
+      "command": "uvx",
       "args": [
-        "run",
-        "/ABSOLUTE/PATH/TO/qanon_mcp_server.py"
+        "qanon_mcp"
       ]
     }
   }
 }
 ```
 
-Replace `/ABSOLUTE/PATH/TO/qanon_mcp_server.py` with the absolute path to your `qanon_mcp_server.py` file.
-
-For Windows users, the path should use double backslashes:
+or, if you don't have `uvx` installed:
 
 ```json
 {
   "mcpServers": {
-    "qanon-explorer": {
+    "qanon_mcp": {
       "command": "uv",
       "args": [
+        "tool",
         "run",
-        "C:\\Users\\YourUsername\\Path\\To\\qanon_mcp_server.py"
+        "qanon_mcp"
       ]
     }
   }
 }
 ```
+
 
 5. Save the file and restart Claude Desktop
 6. Start a new conversation in Claude Desktop

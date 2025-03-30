@@ -4,8 +4,6 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
-import signal
-import sys
 
 from mcp.server.fastmcp import FastMCP
 
@@ -93,6 +91,7 @@ def format_post(post: Dict) -> str:
     post_id = metadata.get("id", "Unknown")
     author = metadata.get("author", "Unknown")
     author_id = metadata.get("author_id", "Unknown")
+    tripcode = metadata.get("tripcode", "Unknown")
 
     source = metadata.get("source", {})
     board = source.get("board", "Unknown")
@@ -135,7 +134,7 @@ def format_post(post: Dict) -> str:
     # Assemble the formatted post
     formatted = f"""
 Post ID: {post_id}
-Author: {author} (ID: {author_id})
+Author: {author} (ID: {author_id}, tripcode: {tripcode})
 Source: {board} on {site}
 Date: {date_str}
 Text:
@@ -161,6 +160,15 @@ def get_post_resource(post_id: int) -> str:
     post = get_post_by_id(post_id)
     if post:
         return format_post(post)
+    return "Post not found."
+
+
+@mcp.resource("qanon://posts/raw/{post_id}")
+def get_raw_post_resource(post_id: int) -> str:
+    """Get a specific post by ID with all raw fields in JSON format."""
+    post = get_post_by_id(post_id)
+    if post:
+        return json.dumps(post, indent=2)
     return "Post not found."
 
 
@@ -556,13 +564,6 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
         timeline += "\n"
 
     return timeline
-
-
-
-def handle_exit(signum, frame):
-    """Handle exit signals gracefully"""
-    print("\nReceived termination signal. Shutting down gracefully...")
-    sys.exit(0)
 
 
 def main():

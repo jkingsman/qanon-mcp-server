@@ -1,6 +1,6 @@
 [project]
 name = "qanon_mcp"
-version = "0.1.2"
+version = "0.2.0"
 authors = [
   { name="Jack Kingsman", email="jack@jackkingsman.me" },
 ]
