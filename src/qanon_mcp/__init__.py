@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "mcp[cli]>=1.6.0",
+# ]
+# ///
 
 import json
 import os
+import re
+from collections import Counter
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from mcp.server.fastmcp import FastMCP
 
@@ -271,6 +279,54 @@ Top Authors:
 
 
 # Tools
+
+
+@mcp.tool()
+def get_post_by_id_tool(post_id: int) -> str:
+    """
+    Retrieve a specific post by its ID.
+
+    Args:
+        post_id: The ID of the post to retrieve
+    """
+    # Use the existing helper function to get the post
+    post = get_post_by_id(post_id)
+
+    if not post:
+        return f"Post with ID {post_id} not found."
+
+    # Use the existing format_post function to format the output
+    formatted_post = format_post(post)
+
+    # Get adjacent posts for context
+    post_list = sorted(posts, key=lambda x: x.get("post_metadata", {}).get("id", 0))
+    post_ids = [p.get("post_metadata", {}).get("id", 0) for p in post_list]
+
+    try:
+        index = post_ids.index(post_id)
+        context = "\nAdjacent Posts:\n"
+
+        # Get previous post if it exists
+        if index > 0:
+            prev_id = post_ids[index - 1]
+            prev_date = datetime.fromtimestamp(
+                post_list[index - 1].get("post_metadata", {}).get("time", 0)
+            ).strftime("%Y-%m-%d")
+            context += f"Previous post: #{prev_id} from {prev_date}\n"
+
+        # Get next post if it exists
+        if index < len(post_ids) - 1:
+            next_id = post_ids[index + 1]
+            next_date = datetime.fromtimestamp(
+                post_list[index + 1].get("post_metadata", {}).get("time", 0)
+            ).strftime("%Y-%m-%d")
+            context += f"Next post: #{next_id} from {next_date}\n"
+    except ValueError:
+        context = ""
+
+    result = f"Post #{post_id}:\n\n{formatted_post}\n{context}"
+
+    return result
 
 
 @mcp.tool()
@@ -564,6 +620,258 @@ def get_timeline_summary(start_date: str = None, end_date: str = None) -> str:
         timeline += "\n"
 
     return timeline
+
+
+def generate_word_cloud(
+    post_texts: List[str], min_word_length: int = 3, max_words: int = 100
+) -> str:
+    """
+    Generate a word cloud analysis from a list of post texts.
+
+    Args:
+        post_texts: List of text content from posts
+        min_word_length: Minimum length of words to include (default: 3)
+        max_words: Maximum number of words to return (default: 100)
+
+    Returns:
+        Formatted string with word frequency analysis
+    """
+    # Common words to exclude (stopwords)
+    stopwords = {
+        "the",
+        "and",
+        "a",
+        "to",
+        "of",
+        "in",
+        "is",
+        "that",
+        "for",
+        "on",
+        "with",
+        "as",
+        "by",
+        "at",
+        "from",
+        "be",
+        "this",
+        "was",
+        "are",
+        "an",
+        "it",
+        "not",
+        "or",
+        "have",
+        "has",
+        "had",
+        "but",
+        "what",
+        "all",
+        "were",
+        "when",
+        "there",
+        "can",
+        "been",
+        "one",
+        "do",
+        "did",
+        "who",
+        "you",
+        "your",
+        "they",
+        "their",
+        "them",
+        "will",
+        "would",
+        "could",
+        "should",
+        "which",
+        "his",
+        "her",
+        "she",
+        "he",
+        "we",
+        "our",
+        "us",
+        "i",
+        "me",
+        "my",
+        "im",
+        "ive",
+        "myself",
+        "its",
+        "it's",
+        "about",
+        "some",
+        "then",
+        "than",
+        "into",
+    }
+
+    # Combine all texts and replace literal \n with actual newlines
+    combined_text = " ".join([text.replace("\\n", " ") for text in post_texts if text])
+
+    # Remove URLs
+    combined_text = re.sub(r"https?://\S+", "", combined_text)
+
+    # Remove special characters and convert to lowercase
+    combined_text = re.sub(r"[^\w\s]", " ", combined_text.lower())
+
+    # Split into words and count frequencies
+    words = combined_text.split()
+
+    # Filter out stopwords and short words
+    filtered_words = [
+        word for word in words if word not in stopwords and len(word) >= min_word_length
+    ]
+
+    # Count word frequencies
+    word_counts = Counter(filtered_words)
+
+    # Get the most common words
+    most_common = word_counts.most_common(max_words)
+
+    # Format the result
+    if not most_common:
+        return "No significant words found in the selected posts."
+
+    total_words = sum(count for _, count in most_common)
+
+    result = f"Word Cloud Analysis (top {len(most_common)} words from {total_words} total filtered words):\n\n"
+
+    # Calculate the maximum frequency for scaling
+    max_freq = most_common[0][1]
+
+    # Create a visual representation of word frequencies
+    for word, count in most_common:
+        # Calculate percentage of total
+        percentage = (count / total_words) * 100
+        # Scale the bar length
+        bar_length = int((count / max_freq) * 30)
+        bar = "█" * bar_length
+        result += f"{word}: {count} ({percentage:.1f}%) {bar}\n"
+
+    return result
+
+
+@mcp.tool()
+def word_cloud_by_post_ids(
+    start_id: int, end_id: int, min_word_length: int = 3, max_words: int = 100
+) -> str:
+    """
+    Generate a word cloud analysis showing the most common words used in posts within a specified ID range.
+
+    Args:
+        start_id: Starting post ID
+        end_id: Ending post ID
+        min_word_length: Minimum length of words to include (default: 3)
+        max_words: Maximum number of words to return (default: 100)
+    """
+    if start_id > end_id:
+        return "Error: start_id must be less than or equal to end_id."
+
+    # Collect posts within the ID range
+    selected_posts = []
+    for post in posts:
+        post_id = post.get("post_metadata", {}).get("id", 0)
+        if start_id <= post_id <= end_id:
+            selected_posts.append(post)
+
+    if not selected_posts:
+        return f"No posts found with IDs between {start_id} and {end_id}."
+
+    # Extract post texts
+    post_texts = [post.get("text", "") for post in selected_posts]
+
+    # Generate word cloud
+    cloud = generate_word_cloud(post_texts, min_word_length, max_words)
+
+    # Add additional information
+    earliest_id = min(
+        post.get("post_metadata", {}).get("id", 0) for post in selected_posts
+    )
+    latest_id = max(
+        post.get("post_metadata", {}).get("id", 0) for post in selected_posts
+    )
+
+    earliest_date = min(
+        post.get("post_metadata", {}).get("time", 0) for post in selected_posts
+    )
+    latest_date = max(
+        post.get("post_metadata", {}).get("time", 0) for post in selected_posts
+    )
+
+    earliest_date_str = (
+        datetime.fromtimestamp(earliest_date).strftime("%Y-%m-%d")
+        if earliest_date
+        else "Unknown"
+    )
+    latest_date_str = (
+        datetime.fromtimestamp(latest_date).strftime("%Y-%m-%d")
+        if latest_date
+        else "Unknown"
+    )
+
+    result = f"Word Cloud Analysis for Post IDs {earliest_id} to {latest_id}\n"
+    result += f"Date Range: {earliest_date_str} to {latest_date_str}\n"
+    result += f"Total Posts Analyzed: {len(selected_posts)}\n\n"
+    result += cloud
+
+    return result
+
+
+@mcp.tool()
+def word_cloud_by_date_range(
+    start_date: str, end_date: str, min_word_length: int = 3, max_words: int = 100
+) -> str:
+    """
+    Generate a word cloud analysis showing the most common words used in posts within a specified date range.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        min_word_length: Minimum length of words to include (default: 3)
+        max_words: Maximum number of words to return (default: 100)
+    """
+    try:
+        # Validate date format
+        start_timestamp = int(datetime.strptime(start_date, "%Y-%m-%d").timestamp())
+        end_timestamp = (
+            int(datetime.strptime(end_date, "%Y-%m-%d").timestamp()) + 86400
+        )  # Add a day in seconds
+    except ValueError:
+        return "Invalid date format. Please use YYYY-MM-DD format."
+
+    # Collect posts within the date range
+    selected_posts = []
+    for post in posts:
+        post_time = post.get("post_metadata", {}).get("time", 0)
+        if start_timestamp <= post_time <= end_timestamp:
+            selected_posts.append(post)
+
+    if not selected_posts:
+        return f"No posts found between {start_date} and {end_date}."
+
+    # Extract post texts
+    post_texts = [post.get("text", "") for post in selected_posts]
+
+    # Generate word cloud
+    cloud = generate_word_cloud(post_texts, min_word_length, max_words)
+
+    # Get post ID range
+    earliest_id = min(
+        post.get("post_metadata", {}).get("id", 0) for post in selected_posts
+    )
+    latest_id = max(
+        post.get("post_metadata", {}).get("id", 0) for post in selected_posts
+    )
+
+    result = f"Word Cloud Analysis for Date Range: {start_date} to {end_date}\n"
+    result += f"Post ID Range: {earliest_id} to {latest_id}\n"
+    result += f"Total Posts Analyzed: {len(selected_posts)}\n\n"
+    result += cloud
+
+    return result
 
 
 def main():
