@@ -96,16 +96,20 @@ or, if you don't have `uvx` installed:
 
 - `qanon://posts/count` - Get the total number of posts
 - `qanon://posts/{post_id}` - Access a specific post by ID
+- `qanon://posts/raw/{post_id}` - Get the raw JSON data for a specific post
 - `qanon://authors` - List all unique authors
 - `qanon://stats` - Get dataset statistics
 
 ### Tools
 
-- **Search Posts** - Find posts containing specific keywords
-- **Get Posts by Date** - Retrieve posts from a date range
-- **Get Posts by Author ID** - Find posts by a specific author
-- **Analyze Post** - Get detailed analysis of a specific post
-- **Get Timeline Summary** - Generate a chronological timeline
+- **get_post_by_id_tool** - Retrieve a specific post by its ID
+- **search_posts** - Find posts containing specific keywords or phrases
+- **get_posts_by_date** - Retrieve posts from a specific date range
+- **get_posts_by_author_id** - Find posts by a specific author ID
+- **analyze_post** - Get detailed analysis of a specific post including references and context
+- **get_timeline_summary** - Generate a chronological timeline, optionally within a date range
+- **word_cloud_by_post_ids** - Generate a word frequency analysis for posts within a specified ID range
+- **word_cloud_by_date_range** - Generate a word frequency analysis for posts within a specified date range
 
 ## Example Queries for Claude
 
@@ -116,10 +120,13 @@ Once the MCP server is connected to Claude Desktop, you can ask questions like:
 - "Show me posts from October 2020"
 - "Analyze post #3725"
 - "Create a timeline of Q-Anon posts from 2018"
+- "Generate a word cloud for Q-Anon posts between January and March 2019"
+- "Get the raw data for post #4500"
+- "What are the most common words used in posts #1000-2000?"
 
 ## Troubleshooting
 
 - If Claude Desktop doesn't show the hammer icon, check your configuration and restart Claude Desktop
-- Ensure the `qposts.json` file is in the same directory as the script
+- Ensure the `posts.json` file is in the same directory as the script
 - Check the output in the terminal for any error messages
 - Make sure you're using the absolute path to the script in your Claude Desktop configuration
