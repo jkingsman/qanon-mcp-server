@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/jkingsman-qanon-mcp-server-badge.png)](https://mseep.ai/app/jkingsman-qanon-mcp-server)
+
 ## QAnon is a dangerous cult. This archive is for research purposes only, and I do _not_ endorse any material in this repo.
 
 # Q-Anon Posts/Drops MCP Server
